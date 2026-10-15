@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D 無邊框立體字筆畫微觀無限穿梭動畫</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0908;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+        }
+        #webgl-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        /* UI 面板 */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px;
+        }
+        .info-card {
+            background: rgba(22, 18, 15, 0.88);
+            border: 1px solid rgba(212, 160, 89, 0.3);
+            border-radius: 12px;
+            padding: 14px 18px;
+            color: #f3e9dc;
+            max-width: 480px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            backdrop-filter: blur(12px);
+            pointer-events: auto;
+            align-self: center;
+        }
+        .info-card h1 {
+            font-size: 1.05rem;
+            color: #e6b87d;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .info-card p {
+            font-size: 0.88rem;
+            line-height: 1.4;
+            color: #d1c2b0;
+        }
+        .control-panel {
+            background: rgba(22, 18, 15, 0.92);
+            border: 1px solid rgba(212, 160, 89, 0.35);
+            border-radius: 16px;
+            padding: 14px 18px;
+            color: #f3e9dc;
+            width: 100%;
+            max-width: 420px;
+            align-self: center;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.8);
+            backdrop-filter: blur(16px);
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+        input[type="text"] {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(212, 160, 89, 0.4);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        input[type="text"]:focus {
+            border-color: #e6b87d;
+        }
+        button {
+            background: linear-gradient(135deg, #c98836, #8c531b);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            padding: 8px 14px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            white-space: nowrap;
+        }
+        button:active {
+            transform: scale(0.96);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-action {
+            background: linear-gradient(135deg, #4a8c53, #2b5932);
+        }
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+        input[type="range"] {
+            flex: 1;
+            accent-color: #e6b87d;
+        }
+        /* Toast 提示條 */
+        #toast {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(230, 184, 125, 0.95);
+            color: #12100d;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+            pointer-events: none;
+        }
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+
+    <!-- Three.js & OrbitControls Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="webgl-container"></div>
+
+    <div id="toast">已成功複製 App 連結！</div>
+
+    <div class="ui-layer">
+        <div class="info-card">
+            <h1>🔍 3D 無邊框立體字微觀穿梭</h1>
+            <p id="status-text">準備演繹每個 3D 立體字從無到有極致放大...</p>
+        </div>
+
+        <div class="control-panel">
+            <div class="input-group">
+                <input type="text" id="text-input" value="一念千山萬" maxlength="12">
+                <button id="btn-restart">重新演繹</button>
+            </div>
+            <div class="row">
+                <button id="btn-toggle" class="btn-secondary">⏸ 暫停</button>
+                <button id="btn-record" class="btn-action">📹 錄製影片</button>
+                <button id="btn-share" class="btn-secondary">🔗 分享 App</button>
+            </div>
+            <div class="row">
+                <span>演繹速度：<span id="speed-val">1.0</span>x</span>
+                <input type="range" id="speed-slider" min="0.5" max="2.5" step="0.1" value="1.0">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONTAINER = document.getElementById('webgl-container');
+        const STATUS_TXT = document.getElementById('status-text');
+        const TEXT_INPUT = document.getElementById('text-input');
+        const BTN_RESTART = document.getElementById('btn-restart');
+        const BTN_TOGGLE = document.getElementById('btn-toggle');
+        const BTN_RECORD = document.getElementById('btn-record');
+        const BTN_SHARE = document.getElementById('btn-share');
+        const SPEED_SLIDER = document.getElementById('speed-slider');
+        const SPEED_VAL = document.getElementById('speed-val');
+        const TOAST = document.getElementById('toast');
+
+        let scene, camera, renderer, controls;
+        let charGroups = [];
+        let strokeTargetPositions = [];
+
+        let textString = "一念千山萬";
+        let isPlaying = true;
+        let animSpeed = 1.0;
+        let animProgress = 0;
+        let isFinalState = false;
+
+        // 錄影變數
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        function showToast(msg) {
+            TOAST.innerText = msg;
+            TOAST.classList.add('show');
+            setTimeout(() => TOAST.classList.remove('show'), 2500);
+        }
+
+        function initThree() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0b0908);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 18);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            CONTAINER.appendChild(renderer.domElement);
+
+            // OrbitControls 觸控與手勢控制
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enabled = false;
+
+            // 燈光配置
+            const ambientLight = new THREE.AmbientLight(0xfff5ea, 1.2);
+            scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xffebd2, 2.0);
+            dirLight1.position.set(10, 20, 15);
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0xc98836, 1.2);
+            dirLight2.position.set(-10, -10, -10);
+            scene.add(dirLight2);
+
+            window.addEventListener('resize', onWindowResize);
+            buildTextSequence();
+        }
+
+        // 精確黑白 Mask 採樣：確保 100% 位於純黑筆畫核心內部
+        function findStrictStrokeCorePoint(char) {
+            const canvas = document.createElement('canvas');
+            const size = 1024;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, size, size);
+
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 640px "PingFang TC", "Microsoft JhengHei", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(char, size / 2, size / 2 + 40);
+
+            const imgData = ctx.getImageData(0, 0, size, size).data;
+            const validPoints = [];
+
+            const checkRadius = 32;
+            for (let y = checkRadius; y < size - checkRadius; y += 8) {
+                for (let x = checkRadius; x < size - checkRadius; x += 8) {
+                    let isCore = true;
+                    for (let dy = -checkRadius; dy <= checkRadius; dy += 10) {
+                        for (let dx = -checkRadius; dx <= checkRadius; dx += 10) {
+                            const idx = ((y + dy) * size + (x + dx)) * 4;
+                            if (imgData[idx] > 50) {
+                                isCore = false;
+                                break;
+                            }
+                        }
+                        if (!isCore) break;
+                    }
+
+                    if (isCore) {
+                        const normX = (x / size) * 2 - 1;
+                        const normY = -((y / size) * 2 - 1);
+                        validPoints.push({ x: normX * 4, y: normY * 4 });
+                    }
+                }
+            }
+
+            if (validPoints.length === 0) {
+                return { x: 0, y: 0 };
+            }
+
+            return validPoints[Math.floor(Math.random() * validPoints.length)];
+        }
+
+        // 產生無邊框、具備 Z 軸厚度的 3D 字體組
+        function createPure3DCharGroup(char) {
+            const group = new THREE.Group();
+
+            const canvas = document.createElement('canvas');
+            const size = 1024;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            ctx.clearRect(0, 0, size, size);
+            const fontStyle = 'bold 640px "PingFang TC", "Microsoft JhengHei", sans-serif';
+            ctx.font = fontStyle;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // 外金描邊
+            ctx.strokeStyle = '#e6b87d';
+            ctx.lineWidth = 36;
+            ctx.strokeText(char, size / 2, size / 2 + 40);
+
+            // 內金描邊
+            ctx.strokeStyle = '#c98836';
+            ctx.lineWidth = 18;
+            ctx.strokeText(char, size / 2, size / 2 + 40);
+
+            // 核心暗色填滿
+            ctx.fillStyle = '#0b0908';
+            ctx.fillText(char, size / 2, size / 2 + 40);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
+
+            const planeGeo = new THREE.PlaneGeometry(8, 8);
+            const mat = new THREE.MeshStandardMaterial({
+                map: texture,
+                transparent: true,
+                roughness: 0.3,
+                metalness: 0.2,
+                side: THREE.DoubleSide
+            });
+
+            // 疊加層形成 3D 質感厚度
+            const depthLayers = 8;
+            const totalThickness = 0.7;
+
+            for (let i = 0; i < depthLayers; i++) {
+                const mesh = new THREE.Mesh(planeGeo, mat);
+                mesh.position.z = -totalThickness / 2 + (i / (depthLayers - 1)) * totalThickness;
+                group.add(mesh);
+            }
+
+            return group;
+        }
+
+        function buildTextSequence() {
+            controls.enabled = false;
+            controls.reset();
+            isFinalState = false;
+
+            charGroups.forEach(obj => scene.remove(obj));
+            charGroups = [];
+            strokeTargetPositions = [];
+
+            textString = TEXT_INPUT.value.trim() || "一念千山萬";
+
+            for (let i = 0; i < textString.length; i++) {
+                const char = textString[i];
+                const group = createPure3DCharGroup(char);
+                scene.add(group);
+                charGroups.push(group);
+
+                const targetPoint = findStrictStrokeCorePoint(char);
+                strokeTargetPositions.push(targetPoint);
+            }
+
+            animProgress = 0;
+            updateAnimationState(0);
+        }
+
+        function setGroupOpacity(group, opacity) {
+            if (!group) return;
+            group.traverse(child => {
+                if (child.isMesh && child.material) {
+                    child.material.transparent = true;
+                    child.material.opacity = opacity;
+                }
+            });
+        }
+
+        function updateAnimationState(progress) {
+            const N = textString.length;
+            if (N === 0) return;
+
+            const totalTransitions = N;
+
+            if (progress < totalTransitions) {
+                isFinalState = false;
+                controls.enabled = false;
+
+                const stepIndex = Math.floor(progress);
+                const stepT = progress - stepIndex;
+
+                const currentChar = charGroups[stepIndex];
+                const targetPt = strokeTargetPositions[stepIndex];
+
+                charGroups.forEach((m, idx) => {
+                    m.visible = (idx === stepIndex);
+                });
+
+                if (stepT <= 0.45) {
+                    const growProgress = stepT / 0.45;
+
+                    camera.position.set(0, 0, 18);
+                    camera.lookAt(0, 0, 0);
+
+                    currentChar.visible = true;
+                    currentChar.position.set(0, 0, 0);
+                    currentChar.rotation.set(0, 0, 0);
+
+                    const currentScale = Math.pow(1000, growProgress - 1);
+                    currentChar.scale.set(currentScale, currentScale, currentScale);
+
+                    const currentAlpha = Math.min(1.0, growProgress * 2.0);
+                    setGroupOpacity(currentChar, currentAlpha);
+
+                    STATUS_TXT.innerText = `✨ 第 ${stepIndex + 1} 個 3D 立體字「${textString[stepIndex]}」由無到有，從極微小點慢慢放大...`;
+
+                } else {
+                    const zoomProgress = (stepT - 0.45) / 0.55;
+
+                    currentChar.visible = true;
+                    currentChar.scale.set(1, 1, 1);
+                    setGroupOpacity(currentChar, 1.0);
+
+                    // 筆畫焦點精準移至畫面中心並放大
+                    const shiftT = easeOutCubic(zoomProgress);
+                    const currentX = THREE.MathUtils.lerp(0, -targetPt.x, shiftT);
+                    const currentY = THREE.MathUtils.lerp(0, -targetPt.y, shiftT);
+                    currentChar.position.set(currentX, currentY, 0);
+
+                    const maxZoom = 250;
+                    const zoomFactor = Math.pow(maxZoom, zoomProgress);
+                    const cameraZ = 18 / zoomFactor;
+
+                    camera.position.set(0, 0, cameraZ);
+                    camera.lookAt(0, 0, 0);
+
+                    STATUS_TXT.innerText = `🔍 第 ${stepIndex + 1} 個 3D 立體字「${textString[stepIndex]}」筆畫核心區域極致放大...`;
+                }
+
+                scene.updateMatrixWorld(true);
+
+            } else {
+                const finalT = Math.min(1, (progress - totalTransitions) / 1.5);
+
+                // === 保持 1:1 原始大器字體尺寸（不縮小字體），計算字串總寬度 ===
+                const spacing = 5.2; // 保持緊湊間距
+                const totalWidth = (N - 1) * spacing + 6.0; // 加上左右邊界 Buffer
+                const startX = -((N - 1) * spacing) / 2;
+
+                charGroups.forEach((m, idx) => {
+                    m.visible = true;
+                    setGroupOpacity(m, 1.0);
+                    m.scale.set(1.0, 1.0, 1.0); // 100% 原始立體字體尺寸
+
+                    const targetX = startX + idx * spacing;
+                    m.position.x = THREE.MathUtils.lerp(0, targetX, easeOutCubic(finalT));
+                    m.position.y = 0;
+                    m.position.z = 0;
+                });
+
+                // === 計算相機必須退後的最優極限距離 (Dynamic Camera Retreat) ===
+                const vFOV = (camera.fov * Math.PI) / 180;
+                const aspect = camera.aspect;
+                
+                // 根據水平視角 (Horizontal FOV) 計算將所有字完整包含於螢幕內所需的最短 Z 距離
+                const hFOV = 2 * Math.atan(Math.tan(vFOV / 2) * aspect);
+                const reqZ = Math.max(18, (totalWidth / 2) / Math.tan(hFOV / 2) + 2.0);
+
+                // 相機平滑滑動退遠
+                const targetCameraZ = THREE.MathUtils.lerp(18, reqZ, easeOutCubic(finalT));
+                camera.position.x = THREE.MathUtils.lerp(camera.position.x, 0, 0.1);
+                camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0, 0.1);
+                camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCameraZ, 0.1);
+                camera.lookAt(0, 0, 0);
+
+                if (!isFinalState) {
+                    if (finalT >= 0.99) {
+                        isFinalState = true;
+                        controls.enabled = true; // 解鎖 3D 手勢旋轉/縮放/平移
+                        controls.target.set(0, 0, 0);
+
+                        // 畫面完全退至呈現所有文字時，自動停止錄影並發起下載
+                        if (isRecording) {
+                            stopRecordingAndSave();
+                        }
+                    }
+                }
+
+                scene.updateMatrixWorld(true);
+                STATUS_TXT.innerText = `✨ 演繹完成！鏡頭已自動退至最優距離呈現所有文字，可自由手勢旋轉觀看全景。`;
+            }
+        }
+
+        function easeOutCubic(x) {
+            return 1 - Math.pow(1 - x, 3);
+        }
+
+        let lastTime = performance.now();
+        function animate(now) {
+            requestAnimationFrame(animate);
+
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            if (isPlaying) {
+                const totalTransitions = textString.length;
+                const maxProgress = totalTransitions + 1.8;
+
+                animProgress += dt * 0.45 * animSpeed;
+                if (animProgress > maxProgress) {
+                    animProgress = maxProgress;
+                }
+                updateAnimationState(animProgress);
+            }
+
+            if (controls.enabled) {
+                controls.update();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // === 全自動 WebGL 錄影與儲存機制 ===
+        function startRecording() {
+            buildTextSequence();
+            isPlaying = true;
+            BTN_TOGGLE.innerText = '⏸ 暫停';
+
+            const canvas = renderer.domElement;
+            const stream = canvas.captureStream(60);
+
+            recordedChunks = [];
+            let options = { mimeType: 'video/webm;codecs=vp9' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/webm' };
+            }
+
+            try {
+                mediaRecorder = new MediaRecorder(stream, options);
+            } catch (e) {
+                mediaRecorder = new MediaRecorder(stream);
+            }
+
+            mediaRecorder.ondataavailable = function (event) {
+                if (event.data && event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            BTN_RECORD.innerText = '🔴 錄影中...';
+            BTN_RECORD.style.background = '#d93838';
+            showToast('🎥 已開始自動錄影，鏡頭退至完整呈現時將自動儲存！');
+        }
+
+        function stopRecordingAndSave() {
+            if (!isRecording || !mediaRecorder) return;
+            isRecording = false;
+            mediaRecorder.stop();
+
+            BTN_RECORD.innerText = '📹 錄製影片';
+            BTN_RECORD.style.background = 'linear-gradient(135deg, #4a8c53, #2b5932)';
+
+            mediaRecorder.onstop = function () {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `3D_Stroke_Zoom_${textString}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
+                showToast('✅ 影片錄製完成，已自動下載影片檔！');
+            };
+        }
+
+        // === App URL 分享與複製機制 ===
+        function shareApp() {
+            const shareData = {
+                title: '3D 文字筆畫微觀無限穿梭',
+                text: `一起來欣賞 3D 文字筆畫微觀穿梭演繹「${textString}」！`,
+                url: window.location.href
+            };
+
+            if (navigator.share) {
+                navigator.share(shareData).catch(() => {
+                    copyToClipboard(window.location.href);
+                });
+            } else {
+                copyToClipboard(window.location.href);
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('🔗 已複製 App 連結至剪貼簿！');
+            }).catch(() => {
+                showToast('🔗 已複製網址：' + text);
+            });
+        }
+
+        BTN_RESTART.addEventListener('click', () => {
+            if (isRecording) stopRecordingAndSave();
+            buildTextSequence();
+            isPlaying = true;
+            BTN_TOGGLE.innerText = '⏸ 暫停';
+        });
+
+        BTN_TOGGLE.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            BTN_TOGGLE.innerText = isPlaying ? '⏸ 暫停' : '▶ 播放';
+        });
+
+        BTN_RECORD.addEventListener('click', () => {
+            if (isRecording) {
+                stopRecordingAndSave();
+            } else {
+                startRecording();
+            }
+        });
+
+        BTN_SHARE.addEventListener('click', shareApp);
+
+        SPEED_SLIDER.addEventListener('input', (e) => {
+            animSpeed = parseFloat(e.target.value);
+            SPEED_VAL.innerText = animSpeed.toFixed(1);
+        });
+
+        TEXT_INPUT.addEventListener('change', buildTextSequence);
+
+        initThree();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
