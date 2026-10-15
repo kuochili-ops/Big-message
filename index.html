@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D 無邊框立體字筆畫微觀無限穿梭動畫</title>
+    <title>𓃥 白六筆畫微觀訊息</title>
     <style>
         * {
             box-sizing: border-box;
@@ -43,7 +43,7 @@
         }
         .info-card {
             background: rgba(22, 18, 15, 0.88);
-            border: 1px solid rgba(212, 160, 89, 0.3);
+            border: 1px solid var(--theme-border, rgba(212, 160, 89, 0.3));
             border-radius: 12px;
             padding: 14px 18px;
             color: #f3e9dc;
@@ -52,14 +52,16 @@
             backdrop-filter: blur(12px);
             pointer-events: auto;
             align-self: center;
+            transition: border-color 0.3s;
         }
         .info-card h1 {
             font-size: 1.05rem;
-            color: #e6b87d;
+            color: var(--theme-color, #e6b87d);
             margin-bottom: 6px;
             display: flex;
             align-items: center;
             gap: 6px;
+            transition: color 0.3s;
         }
         .info-card p {
             font-size: 0.88rem;
@@ -68,7 +70,7 @@
         }
         .control-panel {
             background: rgba(22, 18, 15, 0.92);
-            border: 1px solid rgba(212, 160, 89, 0.35);
+            border: 1px solid var(--theme-border, rgba(212, 160, 89, 0.35));
             border-radius: 16px;
             padding: 14px 18px;
             color: #f3e9dc;
@@ -81,6 +83,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+            transition: border-color 0.3s;
         }
         .input-group {
             display: flex;
@@ -89,7 +92,7 @@
         input[type="text"] {
             flex: 1;
             background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(212, 160, 89, 0.4);
+            border: 1px solid var(--theme-border, rgba(212, 160, 89, 0.4));
             border-radius: 8px;
             padding: 8px 12px;
             color: #fff;
@@ -97,12 +100,23 @@
             outline: none;
             text-align: center;
             letter-spacing: 2px;
+            transition: border-color 0.3s;
         }
         input[type="text"]:focus {
-            border-color: #e6b87d;
+            border-color: var(--theme-color, #e6b87d);
+        }
+        select {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--theme-border, rgba(212, 160, 89, 0.4));
+            border-radius: 8px;
+            padding: 6px 10px;
+            color: #f3e9dc;
+            font-size: 0.88rem;
+            outline: none;
+            cursor: pointer;
         }
         button {
-            background: linear-gradient(135deg, #c98836, #8c531b);
+            background: linear-gradient(135deg, var(--theme-btn-start, #c98836), var(--theme-btn-end, #8c531b));
             border: none;
             border-radius: 8px;
             color: #fff;
@@ -133,7 +147,7 @@
         }
         input[type="range"] {
             flex: 1;
-            accent-color: #e6b87d;
+            accent-color: var(--theme-color, #e6b87d);
         }
         /* Toast 提示條 */
         #toast {
@@ -169,7 +183,7 @@
 
     <div class="ui-layer">
         <div class="info-card">
-            <h1>🔍 3D 無邊框立體字微觀穿梭</h1>
+            <h1>𓃥 白六筆畫微觀訊息</h1>
             <p id="status-text">準備演繹每個 3D 立體字從無到有極致放大...</p>
         </div>
 
@@ -179,7 +193,18 @@
                 <button id="btn-restart">重新演繹</button>
             </div>
             <div class="row">
+                <span>邊框顏色：</span>
+                <select id="color-select">
+                    <option value="gold">暖金 (Golden)</option>
+                    <option value="copper">琥珀銅 (Copper)</option>
+                    <option value="emerald">翡翠綠 (Emerald)</option>
+                    <option value="sapphire">琉璃藍 (Sapphire)</option>
+                    <option value="amethyst">紫羅蘭 (Amethyst)</option>
+                    <option value="rose">玫瑰紅 (Rose)</option>
+                </select>
                 <button id="btn-toggle" class="btn-secondary">⏸ 暫停</button>
+            </div>
+            <div class="row">
                 <button id="btn-record" class="btn-action">📹 錄製影片</button>
                 <button id="btn-share" class="btn-secondary">🔗 分享 App</button>
             </div>
@@ -194,6 +219,7 @@
         const CONTAINER = document.getElementById('webgl-container');
         const STATUS_TXT = document.getElementById('status-text');
         const TEXT_INPUT = document.getElementById('text-input');
+        const COLOR_SELECT = document.getElementById('color-select');
         const BTN_RESTART = document.getElementById('btn-restart');
         const BTN_TOGGLE = document.getElementById('btn-toggle');
         const BTN_RECORD = document.getElementById('btn-record');
@@ -212,6 +238,18 @@
         let animProgress = 0;
         let isFinalState = false;
 
+        // 邊框主題配色方案
+        const COLOR_THEMES = {
+            gold: { outer: '#e6b87d', inner: '#c98836', btnStart: '#c98836', btnEnd: '#8c531b' },
+            copper: { outer: '#f39c12', inner: '#d35400', btnStart: '#e67e22', btnEnd: '#a04000' },
+            emerald: { outer: '#2ecc71', inner: '#27ae60', btnStart: '#27ae60', btnEnd: '#1e8449' },
+            sapphire: { outer: '#3498db', inner: '#2980b9', btnStart: '#2980b9', btnEnd: '#1f618d' },
+            amethyst: { outer: '#9b59b6', inner: '#8e44ad', btnStart: '#8e44ad', btnEnd: '#6c3483' },
+            rose: { outer: '#e74c3c', inner: '#c0392b', btnStart: '#c0392b', btnEnd: '#922b21' }
+        };
+
+        let currentThemeKey = 'gold';
+
         // 錄影變數
         let mediaRecorder;
         let recordedChunks = [];
@@ -221,6 +259,14 @@
             TOAST.innerText = msg;
             TOAST.classList.add('show');
             setTimeout(() => TOAST.classList.remove('show'), 2500);
+        }
+
+        function updateUITheme(key) {
+            const theme = COLOR_THEMES[key];
+            document.documentElement.style.setProperty('--theme-color', theme.outer);
+            document.documentElement.style.setProperty('--theme-border', theme.outer + '55');
+            document.documentElement.style.setProperty('--theme-btn-start', theme.btnStart);
+            document.documentElement.style.setProperty('--theme-btn-end', theme.btnEnd);
         }
 
         function initThree() {
@@ -253,6 +299,7 @@
             dirLight2.position.set(-10, -10, -10);
             scene.add(dirLight2);
 
+            updateUITheme('gold');
             window.addEventListener('resize', onWindowResize);
             buildTextSequence();
         }
@@ -307,9 +354,10 @@
             return validPoints[Math.floor(Math.random() * validPoints.length)];
         }
 
-        // 產生無邊框、具備 Z 軸厚度的 3D 字體組
-        function createPure3DCharGroup(char) {
+        // 產生無邊框、具備 Z 軸厚度的 3D 字體組 (支援邊框配色)
+        function createPure3DCharGroup(char, themeKey) {
             const group = new THREE.Group();
+            const theme = COLOR_THEMES[themeKey] || COLOR_THEMES.gold;
 
             const canvas = document.createElement('canvas');
             const size = 1024;
@@ -323,13 +371,13 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            // 外金描邊
-            ctx.strokeStyle = '#e6b87d';
+            // 外描邊
+            ctx.strokeStyle = theme.outer;
             ctx.lineWidth = 36;
             ctx.strokeText(char, size / 2, size / 2 + 40);
 
-            // 內金描邊
-            ctx.strokeStyle = '#c98836';
+            // 內描邊
+            ctx.strokeStyle = theme.inner;
             ctx.lineWidth = 18;
             ctx.strokeText(char, size / 2, size / 2 + 40);
 
@@ -375,7 +423,7 @@
 
             for (let i = 0; i < textString.length; i++) {
                 const char = textString[i];
-                const group = createPure3DCharGroup(char);
+                const group = createPure3DCharGroup(char, currentThemeKey);
                 scene.add(group);
                 charGroups.push(group);
 
@@ -463,15 +511,15 @@
             } else {
                 const finalT = Math.min(1, (progress - totalTransitions) / 1.5);
 
-                // === 保持 1:1 原始大器字體尺寸（不縮小字體），計算字串總寬度 ===
-                const spacing = 5.2; // 保持緊湊間距
-                const totalWidth = (N - 1) * spacing + 6.0; // 加上左右邊界 Buffer
+                // 保持 1:1 原始字體尺寸
+                const spacing = 5.2;
+                const totalWidth = (N - 1) * spacing + 6.0;
                 const startX = -((N - 1) * spacing) / 2;
 
                 charGroups.forEach((m, idx) => {
                     m.visible = true;
                     setGroupOpacity(m, 1.0);
-                    m.scale.set(1.0, 1.0, 1.0); // 100% 原始立體字體尺寸
+                    m.scale.set(1.0, 1.0, 1.0);
 
                     const targetX = startX + idx * spacing;
                     m.position.x = THREE.MathUtils.lerp(0, targetX, easeOutCubic(finalT));
@@ -479,15 +527,12 @@
                     m.position.z = 0;
                 });
 
-                // === 計算相機必須退後的最優極限距離 (Dynamic Camera Retreat) ===
+                // 動態計算相機後退的最優極限距離
                 const vFOV = (camera.fov * Math.PI) / 180;
                 const aspect = camera.aspect;
-                
-                // 根據水平視角 (Horizontal FOV) 計算將所有字完整包含於螢幕內所需的最短 Z 距離
                 const hFOV = 2 * Math.atan(Math.tan(vFOV / 2) * aspect);
                 const reqZ = Math.max(18, (totalWidth / 2) / Math.tan(hFOV / 2) + 2.0);
 
-                // 相機平滑滑動退遠
                 const targetCameraZ = THREE.MathUtils.lerp(18, reqZ, easeOutCubic(finalT));
                 camera.position.x = THREE.MathUtils.lerp(camera.position.x, 0, 0.1);
                 camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0, 0.1);
@@ -497,10 +542,9 @@
                 if (!isFinalState) {
                     if (finalT >= 0.99) {
                         isFinalState = true;
-                        controls.enabled = true; // 解鎖 3D 手勢旋轉/縮放/平移
+                        controls.enabled = true; // 解鎖 3D 手勢控制
                         controls.target.set(0, 0, 0);
 
-                        // 畫面完全退至呈現所有文字時，自動停止錄影並發起下載
                         if (isRecording) {
                             stopRecordingAndSave();
                         }
@@ -547,7 +591,7 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // === 全自動 WebGL 錄影與儲存機制 ===
+        // === 全自動 WebGL 錄影機制 ===
         function startRecording() {
             buildTextSequence();
             isPlaying = true;
@@ -610,8 +654,8 @@
         // === App URL 分享與複製機制 ===
         function shareApp() {
             const shareData = {
-                title: '3D 文字筆畫微觀無限穿梭',
-                text: `一起來欣賞 3D 文字筆畫微觀穿梭演繹「${textString}」！`,
+                title: '𓃥 白六筆畫微觀訊息',
+                text: `邀請您欣賞 3D 文字筆畫微觀穿梭演繹「${textString}」！`,
                 url: window.location.href
             };
 
@@ -653,6 +697,12 @@
         });
 
         BTN_SHARE.addEventListener('click', shareApp);
+
+        COLOR_SELECT.addEventListener('change', (e) => {
+            currentThemeKey = e.target.value;
+            updateUITheme(currentThemeKey);
+            buildTextSequence();
+        });
 
         SPEED_SLIDER.addEventListener('input', (e) => {
             animSpeed = parseFloat(e.target.value);
