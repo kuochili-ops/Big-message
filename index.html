@@ -26,6 +26,11 @@
             top: 0;
             left: 0;
             z-index: 1;
+            /* 關鍵：禁指頁面預設手勢（如捲動、手勢縮放），使觸控全權交給 OrbitControls */
+            touch-action: none;
+        }
+        #webgl-container canvas {
+            touch-action: none;
         }
         /* UI 面板 */
         .ui-layer {
@@ -261,7 +266,7 @@
             setTimeout(() => TOAST.classList.remove('show'), 2500);
         }
 
-        // 讀取 URL Query 參數 (初始化載入狀態)
+        // 讀取 URL Query 參數
         function loadParamsFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             const paramText = urlParams.get('text');
@@ -277,7 +282,6 @@
             }
         }
 
-        // 更新網址與 UI 主題
         function updateUITheme(key) {
             const theme = COLOR_THEMES[key];
             document.documentElement.style.setProperty('--theme-color', theme.outer);
@@ -300,11 +304,17 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             CONTAINER.appendChild(renderer.domElement);
 
-            // OrbitControls 觸控與手勢控制
+            // OrbitControls 觸控與手勢控制器配置
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             controls.enabled = false;
+
+            // 明確指定手機/平板觸控手勢綁定
+            controls.touches = {
+                ONE: THREE.TOUCH.ROTATE,          // 單指拖曳：旋轉視角
+                TWO: THREE.TOUCH.DOLLY_PAN        // 雙指張開/捏合：縮放 + 平移
+            };
 
             // 燈光配置
             const ambientLight = new THREE.AmbientLight(0xfff5ea, 1.2);
@@ -320,6 +330,10 @@
 
             updateUITheme(currentThemeKey);
             window.addEventListener('resize', onWindowResize);
+
+            // 避免手機端手勢觸碰引發預設頁面滑動
+            CONTAINER.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
             buildTextSequence();
         }
 
@@ -373,7 +387,7 @@
             return validPoints[Math.floor(Math.random() * validPoints.length)];
         }
 
-        // 產生無邊框、具備 Z 軸厚度的 3D 字體組 (支援邊框配色)
+        // 產生無邊框、具備 Z 軸厚度的 3D 字體組
         function createPure3DCharGroup(char, themeKey) {
             const group = new THREE.Group();
             const theme = COLOR_THEMES[themeKey] || COLOR_THEMES.gold;
@@ -530,7 +544,6 @@
             } else {
                 const finalT = Math.min(1, (progress - totalTransitions) / 1.5);
 
-                // 保持 1:1 原始字體尺寸
                 const spacing = 5.2;
                 const totalWidth = (N - 1) * spacing + 6.0;
                 const startX = -((N - 1) * spacing) / 2;
@@ -561,7 +574,7 @@
                 if (!isFinalState) {
                     if (finalT >= 0.99) {
                         isFinalState = true;
-                        controls.enabled = true; // 解鎖 3D 手勢控制
+                        controls.enabled = true; // 解鎖手勢與觸控互動
                         controls.target.set(0, 0, 0);
 
                         if (isRecording) {
@@ -571,7 +584,7 @@
                 }
 
                 scene.updateMatrixWorld(true);
-                STATUS_TXT.innerText = `✨ 演繹完成！鏡頭已自動退至最優距離呈現所有文字，可自由手勢旋轉觀看全景。`;
+                STATUS_TXT.innerText = `✨ 演繹完成！已開啟手勢控制：單指旋轉視角、雙指捏合縮放與平移。`;
             }
         }
 
@@ -670,7 +683,7 @@
             };
         }
 
-        // === App URL 包含訊息內容與邊框設定的分享與複製機制 ===
+        // === App URL 包含訊息內容與邊框設定的分享機制 ===
         function getShareableURL() {
             const baseUrl = window.location.origin + window.location.pathname;
             const params = new URLSearchParams();
