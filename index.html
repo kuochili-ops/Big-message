@@ -179,7 +179,7 @@
 
     <div id="webgl-container"></div>
 
-    <div id="toast">已成功複製 App 連結！</div>
+    <div id="toast">已成功複製帶有訊息設定的 App 連結！</div>
 
     <div class="ui-layer">
         <div class="info-card">
@@ -238,14 +238,14 @@
         let animProgress = 0;
         let isFinalState = false;
 
-        // 邊框主題配色方案
+        // 邊框主題配色方案與名稱對照
         const COLOR_THEMES = {
-            gold: { outer: '#e6b87d', inner: '#c98836', btnStart: '#c98836', btnEnd: '#8c531b' },
-            copper: { outer: '#f39c12', inner: '#d35400', btnStart: '#e67e22', btnEnd: '#a04000' },
-            emerald: { outer: '#2ecc71', inner: '#27ae60', btnStart: '#27ae60', btnEnd: '#1e8449' },
-            sapphire: { outer: '#3498db', inner: '#2980b9', btnStart: '#2980b9', btnEnd: '#1f618d' },
-            amethyst: { outer: '#9b59b6', inner: '#8e44ad', btnStart: '#8e44ad', btnEnd: '#6c3483' },
-            rose: { outer: '#e74c3c', inner: '#c0392b', btnStart: '#c0392b', btnEnd: '#922b21' }
+            gold: { name: '暖金', outer: '#e6b87d', inner: '#c98836', btnStart: '#c98836', btnEnd: '#8c531b' },
+            copper: { name: '琥珀銅', outer: '#f39c12', inner: '#d35400', btnStart: '#e67e22', btnEnd: '#a04000' },
+            emerald: { name: '翡翠綠', outer: '#2ecc71', inner: '#27ae60', btnStart: '#27ae60', btnEnd: '#1e8449' },
+            sapphire: { name: '琉璃藍', outer: '#3498db', inner: '#2980b9', btnStart: '#2980b9', btnEnd: '#1f618d' },
+            amethyst: { name: '紫羅蘭', outer: '#9b59b6', inner: '#8e44ad', btnStart: '#8e44ad', btnEnd: '#6c3483' },
+            rose: { name: '玫瑰紅', outer: '#e74c3c', inner: '#c0392b', btnStart: '#c0392b', btnEnd: '#922b21' }
         };
 
         let currentThemeKey = 'gold';
@@ -261,6 +261,23 @@
             setTimeout(() => TOAST.classList.remove('show'), 2500);
         }
 
+        // 讀取 URL Query 參數 (初始化載入狀態)
+        function loadParamsFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramText = urlParams.get('text');
+            const paramColor = urlParams.get('color');
+
+            if (paramText) {
+                textString = paramText;
+                TEXT_INPUT.value = paramText;
+            }
+            if (paramColor && COLOR_THEMES[paramColor]) {
+                currentThemeKey = paramColor;
+                COLOR_SELECT.value = paramColor;
+            }
+        }
+
+        // 更新網址與 UI 主題
         function updateUITheme(key) {
             const theme = COLOR_THEMES[key];
             document.documentElement.style.setProperty('--theme-color', theme.outer);
@@ -270,6 +287,8 @@
         }
 
         function initThree() {
+            loadParamsFromURL();
+
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0b0908);
 
@@ -299,7 +318,7 @@
             dirLight2.position.set(-10, -10, -10);
             scene.add(dirLight2);
 
-            updateUITheme('gold');
+            updateUITheme(currentThemeKey);
             window.addEventListener('resize', onWindowResize);
             buildTextSequence();
         }
@@ -651,28 +670,40 @@
             };
         }
 
-        // === App URL 分享與複製機制 ===
+        // === App URL 包含訊息內容與邊框設定的分享與複製機制 ===
+        function getShareableURL() {
+            const baseUrl = window.location.origin + window.location.pathname;
+            const params = new URLSearchParams();
+            params.set('text', textString);
+            params.set('color', currentThemeKey);
+            return `${baseUrl}?${params.toString()}`;
+        }
+
         function shareApp() {
+            const shareUrl = getShareableURL();
+            const colorName = COLOR_THEMES[currentThemeKey]?.name || '暖金';
+            const shareText = `𓃥 白六筆畫微觀訊息\n訊息內容：「${textString}」\n邊框配色：${colorName}\n觀看 3D 穿梭演繹：`;
+
             const shareData = {
                 title: '𓃥 白六筆畫微觀訊息',
-                text: `邀請您欣賞 3D 文字筆畫微觀穿梭演繹「${textString}」！`,
-                url: window.location.href
+                text: shareText,
+                url: shareUrl
             };
 
             if (navigator.share) {
                 navigator.share(shareData).catch(() => {
-                    copyToClipboard(window.location.href);
+                    copyToClipboard(`${shareText}\n${shareUrl}`);
                 });
             } else {
-                copyToClipboard(window.location.href);
+                copyToClipboard(`${shareText}\n${shareUrl}`);
             }
         }
 
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                showToast('🔗 已複製 App 連結至剪貼簿！');
+        function copyToClipboard(fullMessage) {
+            navigator.clipboard.writeText(fullMessage).then(() => {
+                showToast('🔗 已成功複製帶有訊息設定的內容與連結！');
             }).catch(() => {
-                showToast('🔗 已複製網址：' + text);
+                showToast('🔗 複製成功！');
             });
         }
 
@@ -709,7 +740,9 @@
             SPEED_VAL.innerText = animSpeed.toFixed(1);
         });
 
-        TEXT_INPUT.addEventListener('change', buildTextSequence);
+        TEXT_INPUT.addEventListener('change', () => {
+            buildTextSequence();
+        });
 
         initThree();
         requestAnimationFrame(animate);
