@@ -26,10 +26,11 @@
             top: 0;
             left: 0;
             z-index: 1;
-            /* 關鍵：禁指頁面預設手勢（如捲動、手勢縮放），使觸控全權交給 OrbitControls */
-            touch-action: none;
+            touch-action: none; /* 禁指頁面預設捲動，讓手勢全權交給 OrbitControls */
         }
         #webgl-container canvas {
+            width: 100% !important;
+            height: 100% !important;
             touch-action: none;
         }
         /* UI 面板 */
@@ -243,7 +244,7 @@
         let animProgress = 0;
         let isFinalState = false;
 
-        // 邊框主題配色方案與名稱對照
+        // 邊框主題配色方案
         const COLOR_THEMES = {
             gold: { name: '暖金', outer: '#e6b87d', inner: '#c98836', btnStart: '#c98836', btnEnd: '#8c531b' },
             copper: { name: '琥珀銅', outer: '#f39c12', inner: '#d35400', btnStart: '#e67e22', btnEnd: '#a04000' },
@@ -304,16 +305,16 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             CONTAINER.appendChild(renderer.domElement);
 
-            // OrbitControls 觸控與手勢控制器配置
+            // 初始化 OrbitControls 手勢觸控控制器
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.enabled = false;
+            controls.enabled = true; // 全程開啟控制器手勢接管
 
-            // 明確指定手機/平板觸控手勢綁定
+            // 明確指定手機與平板觸控手勢映射
             controls.touches = {
-                ONE: THREE.TOUCH.ROTATE,          // 單指拖曳：旋轉視角
-                TWO: THREE.TOUCH.DOLLY_PAN        // 雙指張開/捏合：縮放 + 平移
+                ONE: THREE.TOUCH.ROTATE,          // 單指拖曳：3D 視角旋轉
+                TWO: THREE.TOUCH.DOLLY_PAN        // 雙指捏合/張開：縮放 + 平移
             };
 
             // 燈光配置
@@ -330,9 +331,6 @@
 
             updateUITheme(currentThemeKey);
             window.addEventListener('resize', onWindowResize);
-
-            // 避免手機端手勢觸碰引發預設頁面滑動
-            CONTAINER.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
             buildTextSequence();
         }
@@ -444,7 +442,6 @@
         }
 
         function buildTextSequence() {
-            controls.enabled = false;
             controls.reset();
             isFinalState = false;
 
@@ -486,7 +483,6 @@
 
             if (progress < totalTransitions) {
                 isFinalState = false;
-                controls.enabled = false;
 
                 const stepIndex = Math.floor(progress);
                 const stepT = progress - stepIndex;
@@ -544,6 +540,7 @@
             } else {
                 const finalT = Math.min(1, (progress - totalTransitions) / 1.5);
 
+                // 保持 1:1 原始字體尺寸
                 const spacing = 5.2;
                 const totalWidth = (N - 1) * spacing + 6.0;
                 const startX = -((N - 1) * spacing) / 2;
@@ -565,16 +562,15 @@
                 const hFOV = 2 * Math.atan(Math.tan(vFOV / 2) * aspect);
                 const reqZ = Math.max(18, (totalWidth / 2) / Math.tan(hFOV / 2) + 2.0);
 
-                const targetCameraZ = THREE.MathUtils.lerp(18, reqZ, easeOutCubic(finalT));
-                camera.position.x = THREE.MathUtils.lerp(camera.position.x, 0, 0.1);
-                camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0, 0.1);
-                camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCameraZ, 0.1);
-                camera.lookAt(0, 0, 0);
-
                 if (!isFinalState) {
+                    const targetCameraZ = THREE.MathUtils.lerp(18, reqZ, easeOutCubic(finalT));
+                    camera.position.x = THREE.MathUtils.lerp(camera.position.x, 0, 0.1);
+                    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0, 0.1);
+                    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCameraZ, 0.1);
+                    camera.lookAt(0, 0, 0);
+
                     if (finalT >= 0.99) {
                         isFinalState = true;
-                        controls.enabled = true; // 解鎖手勢與觸控互動
                         controls.target.set(0, 0, 0);
 
                         if (isRecording) {
@@ -608,9 +604,8 @@
                     animProgress = maxProgress;
                 }
                 updateAnimationState(animProgress);
-            }
-
-            if (controls.enabled) {
+            } else if (isFinalState) {
+                // 演繹完成或手勢操控時持續更新 OrbitControls
                 controls.update();
             }
 
